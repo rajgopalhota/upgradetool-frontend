@@ -1,8 +1,78 @@
-# React + Vite
+import React, { useState } from 'react';
+import axios from 'axios';
+import JSZip from 'jszip';
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+const RepoUploader = () => {
+    const [repoLink, setRepoLink] = useState('');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
 
-Currently, two official plugins are available:
+    const handleRepoLinkChange = (event) => {
+        setRepoLink(event.target.value);
+    };
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+    const handleUsernameChange = (event) => {
+        setUsername(event.target.value);
+    };
+
+    const handlePasswordChange = (event) => {
+        setPassword(event.target.value);
+    };
+
+    const handleDownloadAndUpload = async () => {
+        try {
+            const auth = btoa(`${username}:${password}`);
+            const response = await axios.get(repoLink, {
+                responseType: 'arraybuffer',
+                headers: {
+                    'Authorization': `Basic ${auth}`
+                }
+            });
+
+            const zip = new JSZip();
+            zip.file('repo.zip', response.data);
+
+            const content = await zip.generateAsync({ type: 'blob' });
+
+            const formData = new FormData();
+            formData.append('file', content, 'repository.zip');
+
+            await axios.post('/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            alert('Repository uploaded successfully!');
+        } catch (error) {
+            console.error('Error uploading repository:', error);
+            alert('Failed to upload repository.');
+        }
+    };
+
+    return (
+        <div>
+            <input 
+                type="text" 
+                placeholder="Enter Stash repo link" 
+                value={repoLink}
+                onChange={handleRepoLinkChange}
+            />
+            <input 
+                type="text" 
+                placeholder="Enter username" 
+                value={username}
+                onChange={handleUsernameChange}
+            />
+            <input 
+                type="password" 
+                placeholder="Enter password" 
+                value={password}
+                onChange={handlePasswordChange}
+            />
+            <button onClick={handleDownloadAndUpload}>Upload Repository</button>
+        </div>
+    );
+};
+
+export default RepoUploader;
